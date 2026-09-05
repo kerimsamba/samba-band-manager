@@ -70,6 +70,8 @@ export interface GameState {
   version: 2;
   seed: number;
   week: number;
+  /** Missing in older v2 saves means the week is still open for planning. */
+  phase?: "planning" | "gigs";
   bank: number;
   reputation: number;
   morale: number;
@@ -261,6 +263,20 @@ function addEvent(
 function playable(state: GameState): boolean {
   return state.gameOver === null;
 }
+export function isPlanning(state: GameState): boolean {
+  return state.phase !== "gigs";
+}
+function requirePlanning(state: GameState): void {
+  if (!isPlanning(state))
+    throw new Error(
+      "This week’s plans are locked. Finish the gig events to open next week for changes.",
+    );
+}
+export function finishPlanning(state: GameState): GameState {
+  if (state.gameOver || !isPlanning(state)) return state;
+  return { ...state, phase: "gigs" };
+}
+
 function newGig(
   state: GameState,
   week: number,
@@ -329,6 +345,7 @@ export function createGame(seed = Date.now() >>> 0): GameState {
     version: 2,
     seed: seed >>> 0 || 1,
     week: 1,
+    phase: "planning",
     bank: 2400,
     reputation: 42,
     morale: 76,
@@ -403,6 +420,7 @@ function due(state: GameState, gigId: string): Gig {
 
 export function bookGig(state: GameState, id: string): GameState {
   if (!playable(state)) return state;
+  requirePlanning(state);
   const gig = state.gigs.find((g) => g.id === id);
   if (!gig) throw new Error("Gig not found.");
   if (gig.booked) throw new Error("Gig is already booked.");
@@ -418,6 +436,7 @@ export function bookGig(state: GameState, id: string): GameState {
 }
 export function unbookGig(state: GameState, id: string): GameState {
   if (!playable(state)) return state;
+  requirePlanning(state);
   const gig = state.gigs.find((g) => g.id === id);
   if (!gig) throw new Error("Gig not found.");
   if (!gig.booked) throw new Error("Gig is not booked.");
@@ -428,7 +447,9 @@ export function unbookGig(state: GameState, id: string): GameState {
   };
 }
 export function setRehearsal(state: GameState, plan: RehearsalPlan): GameState {
-  return playable(state) ? { ...state, rehearsal: plan } : state;
+  if (!playable(state)) return state;
+  requirePlanning(state);
+  return { ...state, rehearsal: plan };
 }
 
 function attendanceChance(state: GameState, gig: Gig, member: Member): number {
@@ -498,6 +519,7 @@ export function getReadiness(
 
 export function rehearse(state: GameState): GameState {
   if (!playable(state)) return state;
+  requirePlanning(state);
   if (state.rehearsedWeek === state.week)
     throw new Error("The band has already rehearsed this week.");
   if (state.bank < 80)
@@ -536,6 +558,7 @@ export function recruit(
   kind: "open" | "campaign",
 ): GameState {
   if (!playable(state)) return state;
+  requirePlanning(state);
   const cost = kind === "open" ? 100 : 250;
   if (state.bank < cost) throw new Error(`You need £${cost} to recruit.`);
   let s = { ...state, bank: state.bank - cost };
@@ -563,6 +586,7 @@ export function upgrade(
   kind: "transport" | "kit" | "promotion",
 ): GameState {
   if (!playable(state)) return state;
+  requirePlanning(state);
   const level = state.upgrades[kind];
   if (level >= 3) throw new Error("That upgrade is already maxed.");
   const cost = upgradeCost(state, kind);
@@ -585,6 +609,7 @@ export function trainMember(
   instrument: Instrument,
 ): GameState {
   if (!playable(state)) return state;
+  requirePlanning(state);
   if (!validInstrument(instrument)) throw new Error("Unknown instrument.");
   const m = state.members.find((x) => x.id === id);
   if (!m) throw new Error("Member not found.");
@@ -705,6 +730,8 @@ export function resolveGig(
     !["classic", "encore"].includes(choices.finale)
   )
     throw new Error("Choose a valid conducting plan.");
+  if (isPlanning(state))
+    throw new Error("Finish the weekly planning turn before playing gigs.");
   const gig = due(state, gigId);
   const required = Object.values(gig.requirements).reduce(
     (sum, n) => sum + (n || 0),
@@ -878,9 +905,11 @@ export function resolveGig(
 
 export function advanceWeek(state: GameState): GameState {
   if (state.gameOver) return state;
+  if (isPlanning(state))
+    throw new Error("Finish the weekly planning turn before advancing.");
   if (state.gigs.some((g) => g.booked && g.week <= state.week))
     throw new Error("Resolve all booked gigs due this week before advancing.");
-  let s: GameState = { ...state, week: state.week + 1 };
+  let s: GameState = { ...state, week: state.week + 1, phase: "planning" };
   s = {
     ...s,
     bank: state.bank - weeklyCost(state),
@@ -1211,6 +1240,8 @@ export function loadGame(raw: string | null): GameState | null {
     )
       return null;
     if (x.rehearsedWeek !== null && x.rehearsedWeek !== x.week) return null;
+    if (x.phase !== undefined && x.phase !== "planning" && x.phase !== "gigs")
+      return null;
     return clone(x) as GameState;
   } catch {
     return null;

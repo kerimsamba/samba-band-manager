@@ -37,10 +37,13 @@ import Finances from "./components/Finances";
 import Gigs from "./components/Gigs";
 import GigStage from "./components/GigStage";
 import LiveGig from "./components/LiveGig";
+import HomeActions from "./components/HomeActions";
 import { Avatar, Empty, Meter, Tag } from "./components/ui";
 import type { GameState, Gig, Member } from "./game/engine";
 import {
   advanceWeek,
+  finishPlanning,
+  isPlanning,
   bookGig,
   createGame,
   getReadiness,
@@ -82,6 +85,7 @@ export default function App() {
     }
   });
   const [page, setPage] = useState("overview");
+  const [gigsFilter, setGigsFilter] = useState("all");
   const [toast, setToast] = useState("");
   const [saveError, setSaveError] = useState(false);
   const [modal, setModal] = useState<"help" | "settings" | "reset" | null>(
@@ -135,17 +139,23 @@ export default function App() {
     }
   };
   const go = (id: string) => {
-    setPage(id);
+    setGigsFilter(id === "week" ? "week" : id === "offers" ? "offers" : "all");
+    setPage(id === "week" || id === "offers" ? "gigs" : id);
     window.scrollTo({ top: 0, behavior: "instant" });
+  };
+  const startGig = (gig: Gig) => {
+    if (game.gameOver) return;
+    setGame(finishPlanning(game));
+    setLiveGig(gig);
   };
   const advance = () => {
     if (due.length) {
-      setLiveGig(due[0]);
+      startGig(due[0]);
       return;
     }
     act(
-      advanceWeek,
-      `Hello, week ${game.week + 1}. A fresh start and a fresh set of opportunities.`,
+      (s) => advanceWeek(finishPlanning(s)),
+      `Week ${game.week + 1} is open. Make your plans before finishing the turn.`,
     );
   };
   const exportSave = () => {
@@ -274,7 +284,10 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main id="main-content">
+        <main
+          id="main-content"
+          className={page === "overview" ? undefined : "management-page"}
+        >
           <div className="page-heading">
             <div>
               <div className="eyebrow">
@@ -313,22 +326,42 @@ export default function App() {
                 }
               </p>
             </div>
-            <button
-              className="button primary advance"
-              onClick={advance}
-              disabled={!!game.gameOver}
-            >
-              {due.length ? (
-                <>
-                  <Play size={16} fill="currentColor" /> Play this week
-                </>
-              ) : (
-                <>
-                  Next week <ArrowRight size={17} />
-                </>
-              )}
-            </button>
+            {page !== "overview" && (
+              <button
+                className="button primary advance"
+                onClick={advance}
+                disabled={!!game.gameOver}
+              >
+                {!isPlanning(game) && due.length ? (
+                  <>
+                    <Play size={16} />
+                    Play next gig
+                  </>
+                ) : (
+                  <>
+                    {isPlanning(game)
+                      ? "Finish weekly turn"
+                      : "Start next week"}
+                    <ArrowRight size={17} />
+                  </>
+                )}
+              </button>
+            )}
           </div>
+          {!isPlanning(game) && !game.gameOver && (
+            <div className="phase-notice" role="status">
+              <CalendarDays size={20} />
+              <div>
+                <strong>Between weekly turns · Gig events</strong>
+                <p>
+                  {due.length
+                    ? `${due.length} booked ${due.length === 1 ? "gig remains" : "gigs remain"}. Play them when ready.`
+                    : "The week’s gig events are complete."}{" "}
+                  Management changes reopen in week {game.week + 1}.
+                </p>
+              </div>
+            </div>
+          )}
           {game.gameOver && (
             <div className={cx("end-banner", game.gameOver.won && "won")}>
               <Trophy />
@@ -351,6 +384,14 @@ export default function App() {
               <button onClick={exportSave}>Download a backup</button> before
               closing.
             </div>
+          )}
+          {page === "overview" && (
+            <HomeActions
+              game={game}
+              onNavigate={go}
+              onAdvance={advance}
+              onHelp={() => setModal("help")}
+            />
           )}
           <div className="stats-grid">
             {[
@@ -489,12 +530,14 @@ export default function App() {
                       disabled={!!game.gameOver}
                       onClick={() => {
                         if (next?.booked && next.week <= game.week)
-                          setLiveGig(next);
+                          startGig(next);
                         else go("gigs");
                       }}
                     >
                       {next?.booked && next.week <= game.week
-                        ? "Enter gig day"
+                        ? isPlanning(game)
+                          ? "Finish turn & play"
+                          : "Enter gig day"
                         : "View gig calendar"}
                       <ArrowRight size={16} />
                     </button>
@@ -549,7 +592,7 @@ export default function App() {
                       <Sparkles size={17} />
                       <span>
                         {averageEnergy < 55
-                          ? "Running on empty? A rest week will put the bounce back in your band."
+                          ? "Energy is low. Fatigue affects performance and attendance."
                           : "A tight groove and happy people. That’s where the good stuff starts."}
                       </span>
                     </div>
@@ -563,9 +606,9 @@ export default function App() {
                       One band.
                       <br />A whole lot of rhythm.
                     </h3>
-                    <p>Pick this week’s rehearsal focus.</p>
+                    <p>Groove, showmanship, or a week to recover.</p>
                     <button onClick={() => go("rehearsal")}>
-                      Step into rehearsal <ArrowRight size={16} />
+                      View rehearsal room <ArrowRight size={16} />
                     </button>
                   </section>
                 </div>
@@ -663,6 +706,8 @@ export default function App() {
           )}
           {page === "gigs" && (
             <Gigs
+              key={gigsFilter}
+              initialFilter={gigsFilter}
               game={game}
               onBook={(id) =>
                 act(
@@ -673,14 +718,14 @@ export default function App() {
               onUnbook={(id) =>
                 act((s) => unbookGig(s, id), "Booking released.")
               }
-              onPlay={setLiveGig}
+              onPlay={startGig}
             />
           )}
           {page === "rehearsal" && (
             <div className="rehearsal-layout">
               <section className="panel">
                 <div className="panel-head">
-                  <h3>This week’s session</h3>
+                  <h3>This week’s rehearsal</h3>
                   <Tag tone="purple">WEEK {game.week}</Tag>
                 </div>
                 <div className="rehearsal-scene">
@@ -696,7 +741,7 @@ export default function App() {
                           "plan-card",
                           game.rehearsal === plan && "selected",
                         )}
-                        disabled={!!game.gameOver}
+                        disabled={!!game.gameOver || !isPlanning(game)}
                         onClick={() => act((s) => setRehearsal(s, plan))}
                       >
                         <span className="plan-icon">
@@ -730,6 +775,7 @@ export default function App() {
                     disabled={
                       !!game.gameOver ||
                       game.rehearsedWeek === game.week ||
+                      !isPlanning(game) ||
                       game.bank < 80
                     }
                     onClick={() =>
@@ -870,7 +916,7 @@ export default function App() {
                   [
                     "01",
                     "Get the band ready",
-                    "Rehearse once a week to develop skill, lift morale or recover energy. Recruit and cross-train to cover every instrument.",
+                    "Each weekly turn gives you one rehearsal to develop skill, lift morale or recover energy. Recruit and cross-train to cover every instrument.",
                   ],
                   [
                     "02",
@@ -885,7 +931,7 @@ export default function App() {
                   [
                     "04",
                     "Keep the wheels turning",
-                    "Advance the week after playing all due gigs. Costs, recovery and life events roll forward. Keep funds above £0, reputation above 0 and at least 12 active players.",
+                    "Finish your weekly planning turn to lock your decisions. Play booked gigs as events between turns, then open next week for changes. Costs, recovery and life events roll forward. Keep funds above £0, reputation above 0 and at least 12 active players.",
                   ],
                 ].map(([n, title, text]) => (
                   <div key={n}>
@@ -1052,7 +1098,11 @@ export default function App() {
               <button
                 className="button secondary"
                 key={inst}
-                disabled={liveMember.status !== "active" || !!game.gameOver}
+                disabled={
+                  liveMember.status !== "active" ||
+                  !!game.gameOver ||
+                  !isPlanning(game)
+                }
                 onClick={() =>
                   act(
                     (s) => trainMember(s, liveMember.id, inst),
@@ -1073,7 +1123,21 @@ export default function App() {
           game={game}
           sound={sound}
           setSound={setSound}
-          onClose={() => setLiveGig(null)}
+          onClose={() => {
+            const finished = game.history.some(
+              (result) => result.gigId === liveGig.id,
+            );
+            setLiveGig(null);
+            if (finished) {
+              go("overview");
+              if (!game.gameOver)
+                notify(
+                  due.length
+                    ? "Gig finished. Continue the remaining events when ready."
+                    : `Week ${game.week} is finished. Open next week to make changes.`,
+                );
+            }
+          }}
           onResolve={(choices) => {
             const resolved = resolveGig(game, liveGig.id, choices);
             setGame(resolved.state);

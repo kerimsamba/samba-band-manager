@@ -16,6 +16,10 @@ The main limitation was the absence of a performance experience. Managing the ba
 - Added recruitment, instrument training, three rehearsal focuses, scheduled offers, and permanent investments with explicit prices.
 - Added import/export backups, nested save validation, storage-error feedback, keyboard modal focus management, and unfinished-show resumption within the browser tab.
 
+- Made turns explicitly weekly: management decisions lock when the player finishes planning, gigs run as intermediate events, and the next turn opens only after all due gigs. The phase survives reloads and older v2 saves remain usable.
+- Added equal home-screen action cards with direct views for open invitations and this week’s bookings.
+- Reworked phones with readable typography, 44–48px controls, player cards with named stats, stacked conducting choices, and safe-area-aware navigation and dialogs.
+
 ## Correctness findings addressed
 
 1. **Misleading instrument readiness:** the old UI counted a multi-instrument musician in more than one requirement chip. The new engine uses maximum bipartite matching, so each musician occupies one slot and flexible players can move to cover a gap.
@@ -30,7 +34,7 @@ The main limitation was the absence of a performance experience. Managing the ba
 
 The test suite covers deterministic creation and playthrough, real win/loss transitions, weekly finances, rehearsal gating, recruitment, training/recovery, unique instrument assignments, risk/energy tradeoffs, upgrade effects, save corruption, immutability, and duplicate result prevention.
 
-Browser checks exercise a complete performance, all three decisions, result persistence, booking/release, roster search and training, recruitment, weekly advancement, save restore, show pause/resume, animated performer placement, and narrow-screen overflow.
+Browser checks exercise a complete performance, all three decisions, result persistence, booking/release, roster search and training, recruitment, weekly advancement, save restore, show pause/resume, animated performer placement, and narrow-screen overflow. Weekly phase tests cover two gigs without accidental advancement, locked management, reloads between events, and reopening rehearsal next week. Responsive checks measure controls, typography, and overflow at 320px, 390px, and 430px.
 
 ## Current scope
 

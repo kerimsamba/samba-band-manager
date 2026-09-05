@@ -301,7 +301,7 @@ export default function LiveGig({
             ))}
           </div>
           <button className="button primary full" onClick={onClose}>
-            Back to the clubhouse <ArrowRight size={17} />
+            Back to week events <ArrowRight size={17} />
           </button>
         </div>
       ) : (

@@ -1,3 +1,4 @@
+import { isPlanning } from "../game/engine";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -100,6 +101,7 @@ export default function Finances({
               className="button primary full"
               disabled={
                 !!game.gameOver ||
+                !isPlanning(game) ||
                 game.upgrades[u.kind] >= 3 ||
                 game.bank < upgradeCost(game, u.kind)
               }

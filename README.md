@@ -17,7 +17,7 @@ Open the localhost address Vite prints. The game works on desktop and phone-size
 
 ## What you can do
 
-- **Clubhouse:** see the next gig, finances, morale, readiness, energy, and the latest band news.
+- **Clubhouse:** choose equally presented actions for rehearsal, players, invitations, this week’s bookings, finances, and finishing the weekly turn. See the next gig, morale, readiness, energy, and band news.
 - **The band:** search and sort 30 distinct starting players, inspect their strengths, recruit, and cross-train across eight samba instruments.
 - **Gigs & calendar:** book future events, release future bookings, avoid same-day clashes, and review past performances.
 - **Rehearsal room:** choose groove, showmanship, or rest; run one £80 rehearsal each week.
@@ -31,10 +31,10 @@ Shows support pause, 1×/2×/4× speed, and skipping to the result. Closing an u
 
 Start with **30 musicians, £2,400, reputation 42, and band spirit 76**. Your first booking is the Kelvingrove Summer Social.
 
-1. Choose a rehearsal focus and develop your band.
-2. Book suitable gigs in the coming weeks.
-3. Play every booked gig due this week.
-4. Advance the week to pay upkeep, recover energy, progress training, and receive new offers and events.
+1. Each turn is one week. During planning, choose a rehearsal focus, develop your band, manage money, and book gigs at your own pace.
+2. Select **Finish weekly turn** when your plans are set. This locks management decisions for the week.
+3. Play each booked gig as an intermediate event between weekly turns. Closing a gig does not advance the week or reopen management.
+4. After every due gig is complete, select **Start next week** to pay upkeep once, recover energy, progress training, and open the next planning turn. A week without gigs moves directly to the next turn.
 5. Complete **20 successful gigs** to win. Running out of money, losing all reputation, or falling below 12 available players ends the season.
 
 Attendance is uncertain. Reliability, energy, morale, travel, scheduling, and transport upgrades affect who arrives. Every required instrument slot needs a different musician. Cross-trained musicians can cover either role; the engine finds a full assignment when one exists.
@@ -43,7 +43,7 @@ Musicianship, fatigue, coverage, kit quality, and conducting decisions affect pe
 
 ## Saves
 
-The game auto-saves under `sambaSocial_v2` in browser local storage. Open the manager avatar to download or restore a JSON backup. Storage failure shows a backup warning. Save imports validate nested data before accepting it.
+The game auto-saves under `sambaSocial_v2` in browser local storage. Open the manager avatar to download or restore a JSON backup. Storage failure shows a backup warning. Save imports validate nested data before accepting it. The weekly phase is saved too; older v2 saves open in planning.
 
 The original `sambaBandManager_v1` save is left untouched. Version 1 saves are not imported into the new ruleset; use the preserved original to continue an old season. Local saves belong to a browser and origin, so export before changing devices, ports, or deployments.
 
@@ -63,6 +63,7 @@ Playwright uses its installed Chromium, with a local Google Chrome fallback on m
 src/
   App.tsx                  App shell, clubhouse, rehearsal, journal, save management
   components/
+    HomeActions.tsx        Weekly planning choices and intermediate gig events
     Band.tsx               Roster, filtering, recruitment
     Gigs.tsx               Calendar, invitations, gig history
     Finances.tsx           Budget and investments

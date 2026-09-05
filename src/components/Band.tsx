@@ -1,3 +1,4 @@
+import { isPlanning } from "../game/engine";
 import { Megaphone, Plus, Search, Users } from "lucide-react";
 import { useState } from "react";
 import type { GameState, Member } from "../game/engine";
@@ -84,14 +85,17 @@ export default function Band({
               <small>{m.secondary ? `+ ${m.secondary}` : "Specialist"}</small>
             </span>
             <span className="table-stat">
+              <span className="mobile-stat-label">Skill</span>
               <b>{m.skill}</b>
               <Meter value={m.skill} />
             </span>
             <span className="table-stat">
+              <span className="mobile-stat-label">Reliability</span>
               <b>{m.reliability}</b>
               <Meter value={m.reliability} />
             </span>
             <span className="table-stat">
+              <span className="mobile-stat-label">Energy</span>
               <b>{m.energy}</b>
               <Meter value={m.energy} color="lime" />
             </span>
@@ -137,7 +141,9 @@ export default function Band({
             </div>
             <button
               className="button primary"
-              disabled={game.bank < r.cost || !!game.gameOver}
+              disabled={
+                game.bank < r.cost || !!game.gameOver || !isPlanning(game)
+              }
               onClick={() => onRecruit(r.kind)}
             >
               Recruit · {money(r.cost)}

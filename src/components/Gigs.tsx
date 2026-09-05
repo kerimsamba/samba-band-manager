@@ -1,3 +1,4 @@
+import { isPlanning } from "../game/engine";
 import {
   Check,
   CheckCheck,
@@ -16,20 +17,28 @@ import { cx, money } from "../game/format";
 import { Empty, Meter, Tag } from "./ui";
 export default function Gigs({
   game,
+  initialFilter = "all",
   onBook,
   onUnbook,
   onPlay,
 }: {
   game: GameState;
+  initialFilter?: string;
   onBook: (id: string) => void;
   onUnbook: (id: string) => void;
   onPlay: (g: Gig) => void;
 }) {
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState(initialFilter);
   const [weekOffset, setWeekOffset] = useState(0);
   const gigs = [...game.gigs]
     .filter(
-      (g) => filter === "all" || (filter === "booked" ? g.booked : !g.booked),
+      (g) =>
+        filter === "all" ||
+        (filter === "week"
+          ? g.week === game.week && g.booked
+          : filter === "booked"
+            ? g.booked
+            : !g.booked),
     )
     .sort((a, b) => a.week - b.week);
   return (
@@ -72,6 +81,7 @@ export default function Gigs({
         <div className="segmented">
           {[
             ["all", "All opportunities"],
+            ["week", "This week"],
             ["booked", "In the diary"],
             ["offers", "New offers"],
           ].map(([id, label]) => (
@@ -168,7 +178,11 @@ export default function Gigs({
                       <button
                         className="button secondary"
                         onClick={() => onUnbook(gig.id)}
-                        disabled={!!game.gameOver || gig.week <= game.week}
+                        disabled={
+                          !!game.gameOver ||
+                          !isPlanning(game) ||
+                          gig.week <= game.week
+                        }
                         title={
                           gig.week <= game.week
                             ? "This week’s gig is committed; take the stage to fulfil it."
@@ -183,7 +197,10 @@ export default function Gigs({
                           disabled={!!game.gameOver}
                           onClick={() => onPlay(gig)}
                         >
-                          <Play size={15} /> Enter gig day
+                          <Play size={15} />{" "}
+                          {isPlanning(game)
+                            ? "Finish turn & play"
+                            : "Enter gig day"}
                         </button>
                       ) : (
                         <span className="booked-note">
@@ -194,7 +211,7 @@ export default function Gigs({
                   ) : (
                     <button
                       className="button primary full"
-                      disabled={!!game.gameOver}
+                      disabled={!!game.gameOver || !isPlanning(game)}
                       onClick={() => onBook(gig.id)}
                     >
                       Put it in the diary

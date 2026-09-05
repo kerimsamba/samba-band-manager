@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   INSTRUMENTS,
-  advanceWeek,
+  advanceWeek as advanceWeeklyEvents,
+  finishPlanning,
+  isPlanning,
   assignAttendees,
   bookGig,
   createGame,
@@ -10,13 +12,19 @@ import {
   loadGame,
   recruit,
   rehearse,
-  resolveGig,
+  resolveGig as resolveGigEvent,
   setRehearsal,
   trainMember,
   unbookGig,
   upgrade,
   weeklyCost,
 } from "./engine";
+
+// Existing scenario helpers explicitly finish the planning turn before events.
+const resolveGig: typeof resolveGigEvent = (state, id, choices) =>
+  resolveGigEvent(finishPlanning(state), id, choices);
+const advanceWeek: typeof advanceWeeklyEvents = (state) =>
+  advanceWeeklyEvents(finishPlanning(state));
 
 const choices = {
   approach: "steady" as const,
@@ -169,15 +177,16 @@ test("twentieth success immediately wins and cannot be resolved again", () => {
 test("a deterministic manager can play thirty weeks without stale offer deadlock", () => {
   let state = createGame(606);
   for (let turn = 0; turn < 30 && !state.gameOver; turn++) {
-    for (const gig of state.gigs.filter(
-      (g) => g.booked && g.week <= state.week,
-    ))
-      state = resolveGig(state, gig.id, choices).state;
-    if (state.gameOver) break;
     const nextOffer = state.gigs.find(
       (g) => !g.booked && g.week === state.week + 1,
     );
     if (nextOffer) state = bookGig(state, nextOffer.id);
+    state = finishPlanning(state);
+    for (const gig of state.gigs.filter(
+      (g) => g.booked && g.week <= state.week,
+    ))
+      state = resolveGigEvent(state, gig.id, choices).state;
+    if (state.gameOver) break;
     state = advanceWeek(state);
   }
   assert.equal(state.gameOver?.won, true);
@@ -328,4 +337,62 @@ test("loss conditions trigger and immutable actions preserve their input", () =>
       ?.won,
     false,
   );
+});
+
+test("weekly turns lock management until every intermediate gig is resolved", () => {
+  let state = createGame(9);
+  state = rehearse(state);
+  const second = { ...state.gigs[0], id: "second-show", day: "Sunday" };
+  state = { ...state, gigs: [...state.gigs, second] };
+  assert.throws(
+    () => resolveGigEvent(state, state.gigs[0].id, choices),
+    /finish.*planning/i,
+  );
+  assert.throws(() => advanceWeeklyEvents(state), /finish.*planning/i);
+  const locked = finishPlanning(state);
+  assert.equal(locked.week, 1);
+  assert.equal(locked.bank, state.bank);
+  assert.equal(isPlanning(locked), false);
+  assert.equal(finishPlanning(locked), locked);
+  for (const action of [
+    () => rehearse(locked),
+    () => setRehearsal(locked, "rest"),
+    () => recruit(locked, "open"),
+    () => upgrade(locked, "kit"),
+    () => trainMember(locked, locked.members[0].id, "Caixa"),
+    () => bookGig(locked, locked.gigs[1].id),
+    () => unbookGig(locked, locked.gigs[0].id),
+  ])
+    assert.throws(action, /plans are locked/i);
+  const firstResult = resolveGigEvent(locked, locked.gigs[0].id, choices).state;
+  assert.equal(firstResult.week, 1);
+  assert.equal(firstResult.rehearsedWeek, 1);
+  assert.equal(firstResult.phase, "gigs");
+  assert.throws(() => advanceWeeklyEvents(firstResult), /resolve all booked/i);
+  const secondResult = resolveGigEvent(firstResult, second.id, choices).state;
+  assert.equal(secondResult.week, 1);
+  assert.equal(secondResult.history.length, 2);
+  const next = advanceWeeklyEvents(secondResult);
+  assert.equal(next.week, 2);
+  assert.equal(next.phase, "planning");
+  assert.equal(next.rehearsedWeek, null);
+  assert.equal(
+    next.events.filter((e) => e.title === "Weekly running costs").length,
+    1,
+  );
+  assert.throws(() => advanceWeeklyEvents(next), /finish.*planning/i);
+  assert.equal(rehearse(next).rehearsedWeek, 2);
+});
+
+test("planning and event saves round-trip and older v2 saves remain playable", () => {
+  const state = createGame(78);
+  for (const saved of [state, finishPlanning(state)]) {
+    assert.deepEqual(loadGame(JSON.stringify(saved)), saved);
+  }
+  const older = { ...state };
+  delete older.phase;
+  const restored = loadGame(JSON.stringify(older));
+  assert.ok(restored);
+  assert.equal(isPlanning(restored), true);
+  assert.equal(loadGame(JSON.stringify({ ...state, phase: "unknown" })), null);
 });
