@@ -1,0 +1,144 @@
+.gig-stage {
+  --gig-energy: 0.65;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #e6dff7;
+  box-shadow:
+    0 22px 45px rgba(53, 30, 83, 0.18),
+    inset 0 0 0 1px rgba(78, 40, 108, 0.1);
+}
+
+.gig-stage__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 280px;
+}
+.gig-stage--compact .gig-stage__svg {
+  min-height: 210px;
+}
+.gig-performer {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: gig-bounce 1.2s ease-in-out infinite;
+  animation-delay: var(--person-delay);
+}
+.gig-drum-stick {
+  transform-box: fill-box;
+  transform-origin: 100% 100%;
+  animation: gig-stick 0.52s ease-in-out infinite alternate;
+  animation-delay: var(--person-delay);
+}
+.gig-drum-stick--right {
+  animation-delay: calc(var(--person-delay) + 0.19s);
+}
+.gig-crowd-person {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: gig-dance 1.45s ease-in-out infinite;
+  animation-delay: var(--crowd-delay);
+}
+.gig-crowd-arm {
+  transform-box: fill-box;
+  transform-origin: 100% 100%;
+  animation: gig-arm 0.8s ease-in-out infinite alternate;
+  animation-delay: var(--crowd-delay);
+}
+.gig-crowd-arm--right {
+  transform-origin: 0 100%;
+  animation-delay: calc(var(--crowd-delay) + 0.3s);
+}
+.gig-bulbs circle {
+  animation: gig-flicker 1.8s ease-in-out infinite;
+  animation-delay: var(--bulb-delay);
+}
+.gig-sky-glow {
+  animation: gig-glow 4s ease-in-out infinite;
+}
+.gig-confetti {
+  animation: gig-float 2.8s ease-in-out infinite;
+}
+.gig-stage--paused *,
+.gig-stage--paused *::before,
+.gig-stage--paused *::after {
+  animation-play-state: paused !important;
+}
+
+@keyframes gig-bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+  }
+  50% {
+    transform: translateY(calc(-2px - var(--gig-energy) * 5px))
+      rotate(var(--tilt, 0deg));
+  }
+}
+@keyframes gig-stick {
+  from {
+    transform: rotate(-7deg);
+  }
+  to {
+    transform: rotate(20deg);
+  }
+}
+@keyframes gig-dance {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(3deg);
+  }
+}
+@keyframes gig-arm {
+  from {
+    transform: rotate(-8deg);
+  }
+  to {
+    transform: rotate(18deg);
+  }
+}
+@keyframes gig-flicker {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  48% {
+    opacity: 1;
+  }
+  53% {
+    opacity: 0.35;
+  }
+}
+@keyframes gig-glow {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+@keyframes gig-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-8px) rotate(3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gig-stage *,
+  .gig-stage *::before,
+  .gig-stage *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
